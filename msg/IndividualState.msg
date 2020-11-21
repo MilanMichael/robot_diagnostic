@@ -1,0 +1,4 @@
+string node_name
+string topic_name
+string health_status
+string message

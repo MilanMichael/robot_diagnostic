@@ -1,0 +1,5 @@
+string system_state
+int32 system_level
+robot_diagnostic/IndividualState[] good_state
+robot_diagnostic/IndividualState[] warning_state
+robot_diagnostic/IndividualState[] error_state

@@ -1,0 +1,33 @@
+#
+#Topic0 :  -> Topics defined by Topic and the index of the topic, eg Topic0, Topic1, Topic2 ......
+#    name : -> name of the topic , type string with "/" at begining
+#    isheader : -> does the topic has header ?, type bool
+#    maxfreq :  -> maximum frequency of the topic , type double
+#    minfreq :  -> minimum frequency of the topic , type double
+#    mintimestamp_diff : -> minimum timestamp difference for header topics, type double
+#    maxtimestamp_diff : -> minimum timestamp difference for header topics, type double
+#    nodename : -> name of the node publishing the topic, type string
+#    warning_message : -> warning message need to be published, type string
+#    error_message : -> error message need to be published, type string
+
+
+Topic0 :
+    name : "/topic" 
+    isheader : false
+    maxfreq : 10.0
+    minfreq : 5.0
+    mintimestamp_diff : 1.0
+    maxtimestamp_diff : 1.0
+    nodename : "node_0"
+    warning_message : "warning_message_0"
+    error_message : "error_message_0"
+Topic1 :
+    name : "/topic_1" 
+    isheader : false
+    maxfreq : 10.0
+    minfreq : 5.0
+    mintimestamp_diff : 1.0
+    maxtimestamp_diff : 1.0
+    nodename : "node_2"
+    warning_message : "warning_message_1"
+    error_message : "error_message_1"
