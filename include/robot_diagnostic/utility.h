@@ -15,7 +15,7 @@ namespace Utility
      * @param n data passed for the string convertion.
     */
     template <typename T>
-    std::string to_string(const T &n)
+    std::string ToString(const T &n)
     {
         std::ostringstream stm;
         stm << n;
@@ -27,7 +27,7 @@ namespace Utility
      * @param str The string/sentance need to be splited.
      * @param word_no The index value of the word required from the string/sentance.
     */
-    std::string from_string_word(const std::string str, const int word_no)
+    std::string WordFromString(const std::string str, const int word_no)
     {
         std::string word = "";
         int string_no = 1;
@@ -40,9 +40,22 @@ namespace Utility
                 string_no += 1;
                 word = "";
             }
-            else 
+            else
                 word = word + x;
         }
         return word;
+    }
+
+    /**
+     * @brief This is used to print all vector elements for debugging.
+     * @param a passed vector for printing.
+    */
+    template <typename T>
+    void PrintVector(const T &a)
+    {
+        std::cout << "The vector elements are : \n";
+
+        for (int i = 0; i < a.size(); i++)
+            std::cout << a.at(i) << '\n';
     }
 }; // namespace Utility

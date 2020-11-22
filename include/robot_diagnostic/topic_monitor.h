@@ -78,10 +78,9 @@ public:
     TopicMonitor(ros::NodeHandle &nh)
     {
         ROS_INFO("Initializing topic monitor...");
-        updater = new diagnostic_updater::Updater(); /** The diagnostic_updater object to provide diagnostics functionalities. */
-        updater->setHardwareID("Main_Diagnotics");       /** This ID will help you to identify the specific device, and here defined as none. */
+        updater = new diagnostic_updater::Updater(); // The diagnostic_updater object to provide diagnostics functionalities. 
+        updater->setHardwareID("Main_Diagnotics");   // This ID will help you to identify the specific device, and here defined as none. 
         updater->force_update();
-        updater_timer = nh.createTimer(ros::Duration(0.1), &TopicMonitor::UpdaterTimer, this);
         ROS_INFO("Initialized ... Topic Monitor is up and running");
     }
 
@@ -98,10 +97,12 @@ public:
         {
             header_less_topics.push_back(new diagnostic_updater::HeaderlessTopicDiagnostic(topic_names[i], *updater, 
                 diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1)));
-            ros::Subscriber *CommonSub = new ros::Subscriber;
-            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+            ros::Subscriber *common_sub = new ros::Subscriber;
+            *common_sub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
                 boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics[i]));
         }
+        ros::Duration(1).sleep();
+        updater->update();
     }
 
     /**
@@ -122,10 +123,12 @@ public:
             header_topics.push_back(new diagnostic_updater::TopicDiagnostic(topic_names[i], *updater, 
                 diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1), 
                 diagnostic_updater::TimeStampStatusParam(topic_min_timestampdiff[i], topic_max_timestampdiff[i])));
-            ros::Subscriber *CommonSub = new ros::Subscriber;
-            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+            ros::Subscriber *common_sub = new ros::Subscriber;
+            *common_sub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
                 boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics[i]));
         }
+        ros::Duration(1).sleep();
+        updater->update();
     }
 
     /**
@@ -136,32 +139,35 @@ public:
      * @param topic_max_freq maximum required frequency of the topic.
      * @param topic_min_timestampdiff minimum timestamp difference.
      * @param topic_max_timestampdiff maximum timestamp difference.
-     * @param is_header is a vector conating which all vectors are string;
+     * @param is_header is a vector of bool, for identifying topics with header and header less (true for header).
+     * @param just_monitor is a vector of bool stating whether that topic need to be added to diagnostic updater (false if need to be added);
     */
     void AddTopic(ros::NodeHandle &nh, std::vector<string> topic_names, std::vector<double> topic_min_freq, 
         std::vector<double> topic_max_freq, std::vector<double> topic_min_timestampdiff, 
-        std::vector<double> topic_max_timestampdiff,std::vector<bool> is_header)
+        std::vector<double> topic_max_timestampdiff, std::vector<bool> is_header, std::vector<bool> just_monitor)
     {
         for (int i = 0; i < topic_names.size(); i++)
         {
-            if (is_header[i])
+            if (is_header[i] && !just_monitor[i])
             {
                 header_topics.push_back(new diagnostic_updater::TopicDiagnostic(topic_names[i], *updater, 
                 diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1), 
                 diagnostic_updater::TimeStampStatusParam(topic_min_timestampdiff[i], topic_max_timestampdiff[i])));
-                ros::Subscriber *CommonSub = new ros::Subscriber;
-                *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics.back()));
+                ros::Subscriber *common_sub = new ros::Subscriber;
+                *common_sub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+                    boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics.back()));
             }
-            else
+            else if (!just_monitor[i])
             {
                 header_less_topics.push_back(new diagnostic_updater::HeaderlessTopicDiagnostic(topic_names[i], *updater, 
                 diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1)));
-                ros::Subscriber *CommonSub = new ros::Subscriber;
-                *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
-                boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics.back()));
+                ros::Subscriber *common_sub = new ros::Subscriber;
+                *common_sub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+                    boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics.back()));
             }
-            
         }
+        ros::Duration(1).sleep();
+        updater->update();
     }
 
     /**
@@ -177,20 +183,12 @@ public:
 private:
 
     /**
-     * @brief Timer function for calling the ros diagnostic updater update.
-     * @param event is the time based event triggered by the ros createTimer.
-    */
-    void UpdaterTimer(const ros::TimerEvent &event)
-    {
-        updater->update();
-    }
-
-    /**
      * @brief Common subscriber callback funtion for all header less topics.
      * @param data is the dymmmy Msg type created for the subscribing topic.
      * @param topic_name_diagnostic passed diagnotic instance of the topic.
     */
-    void CommonSubscriberCallback_(const boost::shared_ptr<DummySubscriberData const> &data, diagnostic_updater::HeaderlessTopicDiagnostic *topic_name_diagnostic_)
+    void CommonSubscriberCallback_(const boost::shared_ptr<DummySubscriberData const> &data, 
+        diagnostic_updater::HeaderlessTopicDiagnostic *topic_name_diagnostic_)
     {
         topic_name_diagnostic_->tick();
         updater->update();
@@ -201,7 +199,8 @@ private:
      * @param data is the dymmmy Msg type created for the subscribing topic.
      * @param topic_name_diagnostic passed diagnotic instance of the topic.
     */
-    void CommonSubscriberCallback(const boost::shared_ptr<DummySubscriberData const> &data, diagnostic_updater::TopicDiagnostic *topic_name_diagnostic_)
+    void CommonSubscriberCallback(const boost::shared_ptr<DummySubscriberData const> &data, 
+        diagnostic_updater::TopicDiagnostic *topic_name_diagnostic_)
     {
         topic_name_diagnostic_->tick(ros::Time::now());
         updater->update();
@@ -211,7 +210,6 @@ private:
     std::vector<diagnostic_updater::HeaderlessTopicDiagnostic *> header_less_topics; // list of header less topics need to monitor.
 
     diagnostic_updater::Updater *updater; // Created an instance of the ros diagnostics.
-    ros::Timer updater_timer; // ros timer for updating the ros diagnostics.
 
 };
 #endif

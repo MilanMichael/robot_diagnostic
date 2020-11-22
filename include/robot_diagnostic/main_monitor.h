@@ -47,6 +47,7 @@
 #include <diagnostic_msgs/DiagnosticArray.h>
 #include <robot_diagnostic/SystemStatus.h>
 #include <robot_diagnostic/IndividualState.h>
+#include "xmlrpcpp/XmlRpcValue.h"
 
 /**
  * @class MainMointor
@@ -88,6 +89,7 @@ private:
         std::vector<std::string> node_name;
         std::vector<std::string> warning_message;
         std::vector<std::string> error_message;
+        std::vector<bool> just_monitor;
         std::vector<int> current_status;
         std::vector<std::string> current_message;
     };
@@ -113,8 +115,6 @@ private:
     ros::Publisher system_status_pub; // ROS Publisher for system status message.
 
     ros::Timer system_state_timer; // ros timer for publishing system state.
-
-    std::map<std::string, int> status_map; // used for the switch case for assigning topics to system status.
     
 };
 #endif

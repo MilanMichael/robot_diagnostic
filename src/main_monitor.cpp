@@ -42,18 +42,14 @@ MainMonitor::MainMonitor(ros::NodeHandle *nh)
 {
     nh_ = nh;
 
-    // this is map created for string to integer for the case function
-    status_map.insert(std::pair<std::string, int>("GOOD", 0));
-    status_map.insert(std::pair<std::string, int>("WARNING", 1));
-    status_map.insert(std::pair<std::string, int>("ERROR", 2));
-
     GetTopicParams();
 
-    topic_monitor = new TopicMonitor(*nh_);
-    topic_monitor->AddTopic(*nh_, all_topics.topic_name, all_topics.min_freq, all_topics.max_freq, all_topics.min_timestamp_diff, 
-                all_topics.max_timestamp_diff,all_topics.is_header);
-
     diagnotics_sub = nh->subscribe("/diagnostics", 1, &MainMonitor::DiagnosticsMessageCB, this);
+
+    topic_monitor = new TopicMonitor(*nh_);
+    topic_monitor->AddTopic(*nh_, all_topics.topic_name, all_topics.min_freq, all_topics.max_freq, all_topics.min_timestamp_diff,
+                            all_topics.max_timestamp_diff, all_topics.is_header, all_topics.just_monitor);
+
     system_state_timer = nh->createTimer(ros::Duration(0.1), &MainMonitor::SystemState, this);
     system_status_pub = nh->advertise<robot_diagnostic::SystemStatus>("/system_status", 1);
 }
@@ -66,11 +62,11 @@ void MainMonitor::SystemState(const ros::TimerEvent &event)
     {
         indicidual_state.node_name = all_topics.node_name[i];
         indicidual_state.topic_name = all_topics.topic_name[i];
-        indicidual_state.health_status = all_topics.current_status[i] == 0 ? "GOOD" : (all_topics.current_status[i] == 1 ? "WARNING" : "ERROR");
+        indicidual_state.health_status = all_topics.current_status[i] == 0 ? "GOOD" : (all_topics.current_status[i] == 1 ?
+             "WARNING" : (all_topics.current_status[i] == 2 ? "ERROR" : "Initialized"));
         indicidual_state.message = all_topics.current_message[i];
 
-        std::map<std::string, int>::iterator it = status_map.find(indicidual_state.health_status);
-        switch ((*it).second)
+        switch (all_topics.current_status[i])
         {
         case 0:
             state_status.good_state.push_back(indicidual_state);
@@ -82,7 +78,7 @@ void MainMonitor::SystemState(const ros::TimerEvent &event)
             state_status.error_state.push_back(indicidual_state);
             break;
         default:
-            ROS_INFO("Unknown health status");
+            state_status.error_state.push_back(indicidual_state);
             break;
         }
     }
@@ -99,7 +95,7 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
     {
         if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::OK)
         {
-            std::string ok_topic_name = Utility::from_string_word(Message.status[i].name, 2);
+            std::string ok_topic_name = Utility::WordFromString(Message.status[i].name, 2);
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), ok_topic_name);
             if (it != all_topics.topic_name.end())
             {
@@ -109,11 +105,10 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
                     all_topics.current_message[it - all_topics.topic_name.begin()] = "ALL OK";
                 }
             }
-
         }
         else if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::WARN)
         {
-            std::string warn_topic_name = Utility::from_string_word(Message.status[i].name, 2);
+            std::string warn_topic_name = Utility::WordFromString(Message.status[i].name, 2);
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), warn_topic_name);
             if (it != all_topics.topic_name.end())
             {
@@ -126,7 +121,7 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
         }
         else if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::ERROR)
         {
-            std::string error_topic_name = Utility::from_string_word(Message.status[i].name, 2);
+            std::string error_topic_name = Utility::WordFromString(Message.status[i].name, 2);
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), error_topic_name);
             if (it != all_topics.topic_name.end())
             {
@@ -141,69 +136,45 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
 }
 
 void MainMonitor::GetTopicParams()
-{
-    bool end_reached = false;
-    int topic_nos = 0;
-    while (!end_reached)
+{    
+    XmlRpc::XmlRpcValue topicList;
+    if (nh_->getParam("/Diagnostic_topics", topicList))
     {
-        char topic_name[100];
-        sprintf(topic_name, "/Topic%d", topic_nos);
-        if (nh_->hasParam(topic_name))
+        std::map<std::string, XmlRpc::XmlRpcValue>::iterator i;
+        for (i = topicList.begin(); i != topicList.end(); i++)
         {
-            std::string name;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/name", name);
-            bool isheader;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/isheader", isheader);
-            double maxfreq;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/maxfreq", maxfreq);
-            double minfreq;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/minfreq", minfreq);
-            double mintimestamp;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/mintimestamp_diff", mintimestamp);
-            double maxtimestamp;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/maxtimestamp_diff", maxtimestamp);
-            std::string nodename;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/nodename", nodename);
-            std::string warning_message;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/warning_message", warning_message);
-            std::string error_message;
-            nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/error_message", error_message);
-            all_topics.topic_name.push_back(name);
-            all_topics.is_header.push_back(isheader);
-            all_topics.max_freq.push_back(maxfreq);
-            all_topics.min_freq.push_back(minfreq);
-            all_topics.min_timestamp_diff.push_back(mintimestamp);
-            all_topics.max_timestamp_diff.push_back(maxtimestamp);
-            all_topics.node_name.push_back(nodename);
-            all_topics.warning_message.push_back(warning_message);
-            all_topics.error_message.push_back(error_message);
-            all_topics.current_status.push_back(0);
-            all_topics.current_message.push_back("All Good");
+            all_topics.topic_name.push_back(i->second["name"]);
+            all_topics.is_header.push_back(i->second["isheader"]);
+            all_topics.max_freq.push_back(i->second["maxfreq"]);
+            all_topics.min_freq.push_back(i->second["minfreq"]);
+            all_topics.min_timestamp_diff.push_back(i->second["mintimestamp_diff"]);
+            all_topics.max_timestamp_diff.push_back(i->second["maxtimestamp_diff"]);
+            all_topics.node_name.push_back(i->second["nodename"]);
+            all_topics.warning_message.push_back(i->second["warning_message"]);
+            all_topics.error_message.push_back(i->second["error_message"]);
+            all_topics.just_monitor.push_back(i->second["just_monitor"]);
+            all_topics.current_status.push_back(3);
+            all_topics.current_message.push_back("Topic Initialized , No new message from diagnostics");
         }
-        else
-        {
-            end_reached = true;
-        }
-        topic_nos += 1;
     }
 }
 
-int main(int argc, char *argv[])
-{
-    ros::init(argc, argv, "robot_diagnostic");
-    ros::NodeHandle nh("~");
-
-    MainMonitor *main_monitor;
-    main_monitor = new MainMonitor(&nh);
-
-    double rate = 50;
-    ros::Rate loop_rate(rate);
-
-    while (ros::ok())
+    int main(int argc, char *argv[])
     {
-        loop_rate.sleep();
-        ros::spin();
-    }
+        ros::init(argc, argv, "robot_diagnostic");
+        ros::NodeHandle nh("~");
 
-    return 0;
-}
+        MainMonitor *main_monitor;
+        main_monitor = new MainMonitor(&nh);
+
+        double rate = 50;
+        ros::Rate loop_rate(rate);
+
+        while (ros::ok())
+        {
+            loop_rate.sleep();
+            ros::spin();
+        }
+
+        return 0;
+    }

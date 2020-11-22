@@ -7,27 +7,42 @@
 #    mintimestamp_diff : -> minimum timestamp difference for header topics, type double
 #    maxtimestamp_diff : -> minimum timestamp difference for header topics, type double
 #    nodename : -> name of the node publishing the topic, type string
+#    just_monitor : -> if the topic is already in ros diagnostic (some package already has the topic added to ros diagnostic) 
+#                   then make it true for just monitoring for system staus. 
 #    warning_message : -> warning message need to be published, type string
 #    error_message : -> error message need to be published, type string
 
-
-Topic0 :
-    name : "/topic" 
-    isheader : false
-    maxfreq : 10.0
-    minfreq : 5.0
-    mintimestamp_diff : 1.0
-    maxtimestamp_diff : 1.0
-    nodename : "node_0"
-    warning_message : "warning_message_0"
-    error_message : "error_message_0"
-Topic1 :
-    name : "/topic_1" 
-    isheader : false
-    maxfreq : 10.0
-    minfreq : 5.0
-    mintimestamp_diff : 1.0
-    maxtimestamp_diff : 1.0
-    nodename : "node_2"
-    warning_message : "warning_message_1"
-    error_message : "error_message_1"
+Diagnostic_topics:
+    Topic0 :
+        name : "/topic" 
+        isheader : false
+        maxfreq : 10.0
+        minfreq : 5.0
+        mintimestamp_diff : 1.0
+        maxtimestamp_diff : 1.0
+        nodename : "node_0"
+        just_monitor: false
+        warning_message : "warning_message_0"
+        error_message : "error_message_0"
+    Topic1 :
+        name : "/topic_1" 
+        isheader : false
+        maxfreq : 10.0
+        minfreq : 5.0
+        mintimestamp_diff : 1.0
+        maxtimestamp_diff : 1.0
+        nodename : "node_1"
+        just_monitor: false
+        warning_message : "warning_message_1"
+        error_message : "error_message_1"
+    Topic2 :
+        name : "/topic_2" 
+        isheader : false
+        maxfreq : 10.0
+        minfreq : 5.0
+        mintimestamp_diff : 1.0
+        maxtimestamp_diff : 1.0
+        nodename : "node_2"
+        just_monitor: true
+        warning_message : "warning_message_2"
+        error_message : "error_message_2"
