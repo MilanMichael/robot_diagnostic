@@ -1,14 +1,14 @@
 #
 #Topic0 :  -> Topics defined by Topic and the index of the topic, eg Topic0, Topic1, Topic2 ......
 #    name : -> name of the topic , type string with "/" at begining
-#    isheader : -> does the topic has header ?, type bool
+#    isheader : -> does the topic has ros header ? true : false , type bool
 #    maxfreq :  -> maximum frequency of the topic , type double
 #    minfreq :  -> minimum frequency of the topic , type double
 #    mintimestamp_diff : -> minimum timestamp difference for header topics, type double
 #    maxtimestamp_diff : -> minimum timestamp difference for header topics, type double
 #    nodename : -> name of the node publishing the topic, type string
-#    just_monitor : -> if the topic is already in ros diagnostic (some package already has the topic added to ros diagnostic) 
-#                   then make it true for just monitoring for system staus. 
+#    just_monitor : -> if the topic is already integrated with ros diagnostic (some package already integrated their topic with ros diagnostic) 
+#                   then make it true, then the topic will be only used for monitoring for the system staus. type bool
 #    warning_message : -> warning message need to be published, type string
 #    error_message : -> error message need to be published, type string
 
