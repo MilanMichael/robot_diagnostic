@@ -47,7 +47,6 @@
 #include <diagnostic_msgs/DiagnosticArray.h>
 #include <robot_diagnostic/SystemStatus.h>
 #include <robot_diagnostic/IndividualState.h>
-#include <map>
 
 /**
  * @class MainMointor
@@ -73,7 +72,7 @@ public:
     }
 
 private:
-    ros::NodeHandle *nh_; /** variable to store the rosnode handler */
+    ros::NodeHandle *nh_; // variable to store the rosnode handler.
 
     /**
      * @brief A data structure defined for all storing the topics and related info
@@ -105,16 +104,17 @@ private:
     */
     void SystemState(const ros::TimerEvent &event);
 
-    TopicInfo header_less_topic_infos; /** created a struct of TopicInfo for header less topics */
-    TopicInfo header_topic_infos;      /** created a struct of TopicInfo for headered topics */
-    TopicMonitor *topic_monitor;  /**  pointer of class TopicMonitor */
+    TopicInfo all_topics; // created a struct of TopicInfo for topics in yaml.
 
-    ros::Subscriber diagnotics_sub; /**ROS Subscribers for diagnostic message. */
+    TopicMonitor *topic_monitor;  //  pointer of class TopicMonitor.
 
-    ros::Publisher system_status_pub; /**ROS Publisher for system status message. */
+    ros::Subscriber diagnotics_sub; // ROS Subscribers for diagnostic message.
 
-    ros::Timer system_state_timer; /** ros timer for publishing system state. */
+    ros::Publisher system_status_pub; // ROS Publisher for system status message.
 
-    std::map<std::string, int> status_map; /** used for the switch case for assigning topics to system status. */
+    ros::Timer system_state_timer; // ros timer for publishing system state.
+
+    std::map<std::string, int> status_map; // used for the switch case for assigning topics to system status.
+    
 };
 #endif

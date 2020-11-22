@@ -96,9 +96,11 @@ public:
     {
         for (int i = header_less_topics.size(), j = header_less_topics.size(); i < topic_names.size() + j; i++)
         {
-            header_less_topics.push_back(new diagnostic_updater::HeaderlessTopicDiagnostic(topic_names[i], *updater, diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1)));
+            header_less_topics.push_back(new diagnostic_updater::HeaderlessTopicDiagnostic(topic_names[i], *updater, 
+                diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1)));
             ros::Subscriber *CommonSub = new ros::Subscriber;
-            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics[i]));
+            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+                boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics[i]));
         }
     }
 
@@ -110,14 +112,55 @@ public:
      * @param topic_max_freq maximum required frequency of the topic.
      * @param topic_min_timestampdiff minimum timestamp difference.
      * @param topic_max_timestampdiff maximum timestamp difference.
+     * 
     */
-    void AddTopic(ros::NodeHandle &nh, std::vector<string> topic_names, std::vector<double> topic_min_freq, std::vector<double> topic_max_freq, std::vector<double> topic_min_timestampdiff, std::vector<double> topic_max_timestampdiff)
+    void AddTopic(ros::NodeHandle &nh, std::vector<string> topic_names, std::vector<double> topic_min_freq, 
+        std::vector<double> topic_max_freq, std::vector<double> topic_min_timestampdiff, std::vector<double> topic_max_timestampdiff)
     {
         for (int i = header_topics.size(), j = header_topics.size(); i < topic_names.size() + j; i++)
         {
-            header_topics.push_back(new diagnostic_updater::TopicDiagnostic(topic_names[i], *updater, diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1), diagnostic_updater::TimeStampStatusParam(topic_min_timestampdiff[i], topic_max_timestampdiff[i])));
+            header_topics.push_back(new diagnostic_updater::TopicDiagnostic(topic_names[i], *updater, 
+                diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1), 
+                diagnostic_updater::TimeStampStatusParam(topic_min_timestampdiff[i], topic_max_timestampdiff[i])));
             ros::Subscriber *CommonSub = new ros::Subscriber;
-            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics[i]));
+            *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+                boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics[i]));
+        }
+    }
+
+    /**
+     * @brief  TopicMonitor with header.
+     * @param nh ros node handler passed from the main ros node.
+     * @param topic_name  list of topics need to be monitored.
+     * @param topic_min_freq mainimum required frequency of the topic.
+     * @param topic_max_freq maximum required frequency of the topic.
+     * @param topic_min_timestampdiff minimum timestamp difference.
+     * @param topic_max_timestampdiff maximum timestamp difference.
+     * @param is_header is a vector conating which all vectors are string;
+    */
+    void AddTopic(ros::NodeHandle &nh, std::vector<string> topic_names, std::vector<double> topic_min_freq, 
+        std::vector<double> topic_max_freq, std::vector<double> topic_min_timestampdiff, 
+        std::vector<double> topic_max_timestampdiff,std::vector<bool> is_header)
+    {
+        for (int i = 0; i < topic_names.size(); i++)
+        {
+            if (is_header[i])
+            {
+                header_topics.push_back(new diagnostic_updater::TopicDiagnostic(topic_names[i], *updater, 
+                diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1), 
+                diagnostic_updater::TimeStampStatusParam(topic_min_timestampdiff[i], topic_max_timestampdiff[i])));
+                ros::Subscriber *CommonSub = new ros::Subscriber;
+                *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, boost::bind(&TopicMonitor::CommonSubscriberCallback, this, _1, header_topics.back()));
+            }
+            else
+            {
+                header_less_topics.push_back(new diagnostic_updater::HeaderlessTopicDiagnostic(topic_names[i], *updater, 
+                diagnostic_updater::FrequencyStatusParam(&topic_min_freq[i], &topic_max_freq[i], 0.1, 1)));
+                ros::Subscriber *CommonSub = new ros::Subscriber;
+                *CommonSub = nh.subscribe<DummySubscriberData>(topic_names[i], 1, 
+                boost::bind(&TopicMonitor::CommonSubscriberCallback_, this, _1, header_less_topics.back()));
+            }
+            
         }
     }
 
@@ -164,11 +207,11 @@ private:
         updater->update();
     }
 
-    std::vector<diagnostic_updater::TopicDiagnostic *> header_topics;                /** list of header topics need to monitor. */
-    std::vector<diagnostic_updater::HeaderlessTopicDiagnostic *> header_less_topics; /** list of header less topics need to monitor. */
+    std::vector<diagnostic_updater::TopicDiagnostic *> header_topics; // list of header topics need to monitor. 
+    std::vector<diagnostic_updater::HeaderlessTopicDiagnostic *> header_less_topics; // list of header less topics need to monitor.
 
-    diagnostic_updater::Updater *updater; /** Created an instance of the ros diagnostics. */
-    ros::Timer updater_timer; /** ros timer for updating the ros diagnostics. */
+    diagnostic_updater::Updater *updater; // Created an instance of the ros diagnostics.
+    ros::Timer updater_timer; // ros timer for updating the ros diagnostics.
 
 };
 #endif

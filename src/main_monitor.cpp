@@ -42,6 +42,7 @@ MainMonitor::MainMonitor(ros::NodeHandle *nh)
 {
     nh_ = nh;
 
+    // this is map created for string to integer for the case function
     status_map.insert(std::pair<std::string, int>("GOOD", 0));
     status_map.insert(std::pair<std::string, int>("WARNING", 1));
     status_map.insert(std::pair<std::string, int>("ERROR", 2));
@@ -49,68 +50,44 @@ MainMonitor::MainMonitor(ros::NodeHandle *nh)
     GetTopicParams();
 
     topic_monitor = new TopicMonitor(*nh_);
-    topic_monitor->AddTopic(*nh_, header_less_topic_infos.topic_name, header_less_topic_infos.min_freq, header_less_topic_infos.max_freq);
-    topic_monitor->AddTopic(*nh_, header_topic_infos.topic_name, header_topic_infos.min_freq, header_topic_infos.max_freq, header_topic_infos.min_timestamp_diff, header_topic_infos.max_timestamp_diff);
+    topic_monitor->AddTopic(*nh_, all_topics.topic_name, all_topics.min_freq, all_topics.max_freq, all_topics.min_timestamp_diff, 
+                all_topics.max_timestamp_diff,all_topics.is_header);
+
     diagnotics_sub = nh->subscribe("/diagnostics", 1, &MainMonitor::DiagnosticsMessageCB, this);
     system_state_timer = nh->createTimer(ros::Duration(0.1), &MainMonitor::SystemState, this);
-    system_status_pub=nh->advertise<robot_diagnostic::SystemStatus>("/system_status",1);
-
+    system_status_pub = nh->advertise<robot_diagnostic::SystemStatus>("/system_status", 1);
 }
 
 void MainMonitor::SystemState(const ros::TimerEvent &event)
 {
     robot_diagnostic::SystemStatus state_status;
     robot_diagnostic::IndividualState indicidual_state;
-    for (int i = 0; i <header_less_topic_infos.topic_name.size(); i++)
+    for (int i = 0; i < all_topics.topic_name.size(); i++)
     {
-        indicidual_state.node_name =  header_less_topic_infos.node_name[i];
-        indicidual_state.topic_name =  header_less_topic_infos.topic_name[i];
-        indicidual_state.health_status =  header_less_topic_infos.current_status[i] == 0 ? "GOOD" : (header_less_topic_infos.current_status[i] == 1 ? "WARNING" : "ERROR");
-        indicidual_state.message = header_less_topic_infos.current_message[i];
+        indicidual_state.node_name = all_topics.node_name[i];
+        indicidual_state.topic_name = all_topics.topic_name[i];
+        indicidual_state.health_status = all_topics.current_status[i] == 0 ? "GOOD" : (all_topics.current_status[i] == 1 ? "WARNING" : "ERROR");
+        indicidual_state.message = all_topics.current_message[i];
 
         std::map<std::string, int>::iterator it = status_map.find(indicidual_state.health_status);
         switch ((*it).second)
         {
-            case 0: 
-                state_status.good_state.push_back(indicidual_state);
-                break;
-            case 1: 
-                state_status.warning_state.push_back(indicidual_state);
-                break;
-            case 2: 
-                state_status.error_state.push_back(indicidual_state);
-                break;
-            default :
-                ROS_INFO("Unknown health status");
-                break;
-        }
-    }
-    for (int i = 0; i <header_topic_infos.topic_name.size(); i++)
-    {
-        indicidual_state.node_name =  header_topic_infos.node_name[i];
-        indicidual_state.topic_name =  header_topic_infos.topic_name[i];
-        indicidual_state.health_status = header_topic_infos.current_status[i] == 0 ? "GOOD" : (header_topic_infos.current_status[i] == 1 ? "WARNING" : "ERROR");
-        indicidual_state.message = header_topic_infos.current_message[i];
-
-        std::map<std::string, int>::iterator it = status_map.find(indicidual_state.health_status);
-        switch ((*it).second)
-        {
-            case 0: 
-                state_status.good_state.push_back(indicidual_state);
-                break;
-            case 1: 
-                state_status.warning_state.push_back(indicidual_state);
-                break;
-            case 2: 
-                state_status.error_state.push_back(indicidual_state);
-                break;
-            default :
-                ROS_INFO("Unknown health status");
-                break;
+        case 0:
+            state_status.good_state.push_back(indicidual_state);
+            break;
+        case 1:
+            state_status.warning_state.push_back(indicidual_state);
+            break;
+        case 2:
+            state_status.error_state.push_back(indicidual_state);
+            break;
+        default:
+            ROS_INFO("Unknown health status");
+            break;
         }
     }
     state_status.system_level = state_status.error_state.size() > 0 ? 2 : (state_status.warning_state.size() > 0 ? 1 : 0);
-    state_status.system_state = state_status.system_level == 0 ?  "System is Fine" : (state_status.system_level == 1 ? "System in Warning" : "System in Error");
+    state_status.system_state = state_status.system_level == 0 ? "System is Fine" : (state_status.system_level == 1 ? "System in Warning" : "System in Error");
     system_status_pub.publish(state_status);
 }
 
@@ -123,66 +100,40 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
         if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::OK)
         {
             std::string ok_topic_name = Utility::from_string_word(Message.status[i].name, 2);
-            it = std::find(header_less_topic_infos.topic_name.begin(), header_less_topic_infos.topic_name.end(), ok_topic_name);
-            if (it != header_less_topic_infos.topic_name.end())
+            it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), ok_topic_name);
+            if (it != all_topics.topic_name.end())
             {
-                if (header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] != 0)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 0)
                 {
-                    header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] = 0;
-                    header_less_topic_infos.current_message[it - header_less_topic_infos.topic_name.begin()] = "ALL OK";
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = 0;
+                    all_topics.current_message[it - all_topics.topic_name.begin()] = "ALL OK";
                 }
             }
-            it = std::find(header_topic_infos.topic_name.begin(), header_topic_infos.topic_name.end(), ok_topic_name);
-            if (it != header_topic_infos.topic_name.end())
-            {
-                if (header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] != 0)
-                {
-                    header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] = 0;
-                    header_topic_infos.current_message[it - header_topic_infos.topic_name.begin()] = "ALL OK";
-                }
-            }
+
         }
         else if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::WARN)
         {
             std::string warn_topic_name = Utility::from_string_word(Message.status[i].name, 2);
-            it = std::find(header_less_topic_infos.topic_name.begin(), header_less_topic_infos.topic_name.end(), warn_topic_name);
-            if (it != header_less_topic_infos.topic_name.end())
+            it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), warn_topic_name);
+            if (it != all_topics.topic_name.end())
             {
-                if (header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] != 1)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 1)
                 {
-                    header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] = 1;
-                    header_less_topic_infos.current_message[it - header_less_topic_infos.topic_name.begin()] = header_less_topic_infos.warning_message[it - header_less_topic_infos.topic_name.begin()];
-                }
-            }
-            it = std::find(header_topic_infos.topic_name.begin(), header_topic_infos.topic_name.end(), warn_topic_name);
-            if (it != header_topic_infos.topic_name.end())
-            {
-                if (header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] != 1)
-                {
-                    header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] = 1;
-                    header_topic_infos.current_message[it - header_topic_infos.topic_name.begin()] = header_topic_infos.warning_message[it - header_topic_infos.topic_name.begin()];
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = 1;
+                    all_topics.current_message[it - all_topics.topic_name.begin()] = all_topics.warning_message[it - all_topics.topic_name.begin()];
                 }
             }
         }
         else if (Message.status[i].level == diagnostic_msgs::DiagnosticStatus::ERROR)
         {
             std::string error_topic_name = Utility::from_string_word(Message.status[i].name, 2);
-            it = std::find(header_less_topic_infos.topic_name.begin(), header_less_topic_infos.topic_name.end(), error_topic_name);
-            if (it != header_less_topic_infos.topic_name.end())
+            it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), error_topic_name);
+            if (it != all_topics.topic_name.end())
             {
-                if (header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] != 2)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 2)
                 {
-                    header_less_topic_infos.current_status[it - header_less_topic_infos.topic_name.begin()] = 2;
-                    header_less_topic_infos.current_message[it - header_less_topic_infos.topic_name.begin()] = header_less_topic_infos.error_message[it - header_less_topic_infos.topic_name.begin()];
-                }
-            }
-            it = std::find(header_topic_infos.topic_name.begin(), header_topic_infos.topic_name.end(), error_topic_name);
-            if (it != header_topic_infos.topic_name.end())
-            {
-                if (header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] != 2)
-                {
-                    header_topic_infos.current_status[it - header_topic_infos.topic_name.begin()] = 2;
-                    header_topic_infos.current_message[it - header_topic_infos.topic_name.begin()] = header_topic_infos.error_message[it - header_topic_infos.topic_name.begin()];
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = 2;
+                    all_topics.current_message[it - all_topics.topic_name.begin()] = all_topics.error_message[it - all_topics.topic_name.begin()];
                 }
             }
         }
@@ -217,34 +168,17 @@ void MainMonitor::GetTopicParams()
             nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/warning_message", warning_message);
             std::string error_message;
             nh_->getParam("/Topic" + Utility::to_string(topic_nos) + "/error_message", error_message);
-            if (isheader)
-            {
-                header_topic_infos.topic_name.push_back(name);
-                header_topic_infos.is_header.push_back(isheader);
-                header_topic_infos.max_freq.push_back(maxfreq);
-                header_topic_infos.min_freq.push_back(minfreq);
-                header_topic_infos.min_timestamp_diff.push_back(mintimestamp);
-                header_topic_infos.max_timestamp_diff.push_back(maxtimestamp);
-                header_topic_infos.node_name.push_back(nodename);
-                header_topic_infos.warning_message.push_back(warning_message);
-                header_topic_infos.error_message.push_back(error_message);
-                header_topic_infos.current_status.push_back(0);
-                header_topic_infos.current_message.push_back("All Good");
-            }
-            else
-            {
-                header_less_topic_infos.topic_name.push_back(name);
-                header_less_topic_infos.is_header.push_back(isheader);
-                header_less_topic_infos.max_freq.push_back(maxfreq);
-                header_less_topic_infos.min_freq.push_back(minfreq);
-                header_less_topic_infos.min_timestamp_diff.push_back(0.0);
-                header_less_topic_infos.max_timestamp_diff.push_back(0.0);
-                header_less_topic_infos.node_name.push_back(nodename);
-                header_less_topic_infos.warning_message.push_back(warning_message);
-                header_less_topic_infos.error_message.push_back(error_message);
-                header_less_topic_infos.current_status.push_back(0);
-                header_less_topic_infos.current_message.push_back("All Good");
-            }
+            all_topics.topic_name.push_back(name);
+            all_topics.is_header.push_back(isheader);
+            all_topics.max_freq.push_back(maxfreq);
+            all_topics.min_freq.push_back(minfreq);
+            all_topics.min_timestamp_diff.push_back(mintimestamp);
+            all_topics.max_timestamp_diff.push_back(maxtimestamp);
+            all_topics.node_name.push_back(nodename);
+            all_topics.warning_message.push_back(warning_message);
+            all_topics.error_message.push_back(error_message);
+            all_topics.current_status.push_back(0);
+            all_topics.current_message.push_back("All Good");
         }
         else
         {
