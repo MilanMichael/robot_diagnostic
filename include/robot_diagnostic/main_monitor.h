@@ -76,7 +76,7 @@ private:
     ros::NodeHandle *nh_; // variable to store the rosnode handler.
 
     /**
-     * @brief A data structure defined for all storing the topics and related info
+     * @brief A data structure defined for storing the topics and related info
     */
     struct TopicInfo
     {
