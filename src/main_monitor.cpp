@@ -62,8 +62,9 @@ void MainMonitor::SystemState(const ros::TimerEvent &event)
     {
         indicidual_state.node_name = all_topics.node_name[i];
         indicidual_state.topic_name = all_topics.topic_name[i];
-        indicidual_state.health_status = all_topics.current_status[i] == 0 ? "GOOD" : (all_topics.current_status[i] == 1 ?
-             "WARNING" : (all_topics.current_status[i] == 2 ? "ERROR" : "Initialized"));
+        indicidual_state.health_status = all_topics.current_status[i] == diagnostic_msgs::DiagnosticStatus::OK ? "GOOD" : 
+             (all_topics.current_status[i] == diagnostic_msgs::DiagnosticStatus::WARN ?
+             "WARNING" : (all_topics.current_status[i] == diagnostic_msgs::DiagnosticStatus::ERROR ? "ERROR" : "Initialized"));
         indicidual_state.message = all_topics.current_message[i];
 
         switch (all_topics.current_status[i])
@@ -82,7 +83,8 @@ void MainMonitor::SystemState(const ros::TimerEvent &event)
             break;
         }
     }
-    state_status.system_level = state_status.error_state.size() > 0 ? 2 : (state_status.warning_state.size() > 0 ? 1 : 0);
+    state_status.system_level = state_status.error_state.size() > 0 ? diagnostic_msgs::DiagnosticStatus::ERROR : 
+        (state_status.warning_state.size() > 0 ? diagnostic_msgs::DiagnosticStatus::WARN : diagnostic_msgs::DiagnosticStatus::OK);
     state_status.system_state = state_status.system_level == 0 ? "System is Fine" : (state_status.system_level == 1 ? "System in Warning" : "System in Error");
     system_status_pub.publish(state_status);
 }
@@ -99,9 +101,9 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), ok_topic_name);
             if (it != all_topics.topic_name.end())
             {
-                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 0)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != diagnostic_msgs::DiagnosticStatus::OK)
                 {
-                    all_topics.current_status[it - all_topics.topic_name.begin()] = 0;
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = diagnostic_msgs::DiagnosticStatus::OK;
                     all_topics.current_message[it - all_topics.topic_name.begin()] = "ALL OK";
                 }
             }
@@ -112,9 +114,9 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), warn_topic_name);
             if (it != all_topics.topic_name.end())
             {
-                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 1)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != diagnostic_msgs::DiagnosticStatus::WARN)
                 {
-                    all_topics.current_status[it - all_topics.topic_name.begin()] = 1;
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = diagnostic_msgs::DiagnosticStatus::WARN;
                     all_topics.current_message[it - all_topics.topic_name.begin()] = all_topics.warning_message[it - all_topics.topic_name.begin()];
                 }
             }
@@ -125,9 +127,9 @@ void MainMonitor::DiagnosticsMessageCB(const diagnostic_msgs::DiagnosticArray::C
             it = std::find(all_topics.topic_name.begin(), all_topics.topic_name.end(), error_topic_name);
             if (it != all_topics.topic_name.end())
             {
-                if (all_topics.current_status[it - all_topics.topic_name.begin()] != 2)
+                if (all_topics.current_status[it - all_topics.topic_name.begin()] != diagnostic_msgs::DiagnosticStatus::ERROR)
                 {
-                    all_topics.current_status[it - all_topics.topic_name.begin()] = 2;
+                    all_topics.current_status[it - all_topics.topic_name.begin()] = diagnostic_msgs::DiagnosticStatus::ERROR;
                     all_topics.current_message[it - all_topics.topic_name.begin()] = all_topics.error_message[it - all_topics.topic_name.begin()];
                 }
             }
